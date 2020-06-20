@@ -2,6 +2,8 @@ import { PointChromosome } from './PointChromosome';
 import { Population } from './Population';
 import { BitChromosomeConverter } from './BitChromosomeConverter';
 import { GenericBitChromosome } from './GenericBitChromosome';
+import { Subject } from 'rxjs';
+import { PopulationStats } from './PopulationStats';
 
 export class GeneticProcedure {
   private initialPopulation: Population<PointChromosome>;
@@ -10,12 +12,13 @@ export class GeneticProcedure {
   private noToRemain: number;
   private converter = new BitChromosomeConverter();
   private fitnessFunc: (y: PointChromosome) => number;
+  public population$ = new Subject<PopulationStats<PointChromosome>>();
   constructor(
-      population: Population<PointChromosome>,
-      mutationRate: number,
-      crossoverRate: number,
-      factorToRemain: number,
-      fitnessFunc: (y: PointChromosome) => number) {
+    population: Population<PointChromosome>,
+    mutationRate: number,
+    crossoverRate: number,
+    factorToRemain: number,
+    fitnessFunc: (y: PointChromosome) => number) {
     this.initialPopulation = population;
     this.mutationRate = mutationRate;
     this.crossoverRate = crossoverRate;
@@ -29,17 +32,19 @@ export class GeneticProcedure {
     let population = this.initialPopulation;
     for (let gen = 0; gen < numberOfGenerations; gen++) {
       // Write current population stats
-      this.printStats(population);
-      const newPopulationChromosomes = population.population.map(p => new PointChromosome(p.x, p.y));
+      const populationStats = this.getPopulationStats(population);
+      this.population$.next(populationStats);
+      const newPopulationChromosomes = population.population.map(p =>
+        new PointChromosome(p.x, p.y));
       const newPopulation = new Population(newPopulationChromosomes, population.generationNo + 1);
-      newPopulation.population = newPopulation.population.sort((a, b) => this.fitnessFunc(b) - this.fitnessFunc(a));
+      newPopulation.population = newPopulation.population.sort((a, b) =>
+        this.fitnessFunc(b) - this.fitnessFunc(a));
       for (let i = this.noToRemain; i < newPopulation.population.length; i = i + 1) {
         const chromo = newPopulation.population[i];
         if (Math.random() < 0.2) {
           newPopulation.population[i] = this.createCrossOver(newPopulation);
           continue;
-        }
-        else {
+        } else {
           const mutatedGenes = this.toGenericChromosome(chromo).mutate(this.mutationRate).genes;
           newPopulation.population[i] = this.converter.convertFromBits(mutatedGenes);
         }
@@ -48,11 +53,14 @@ export class GeneticProcedure {
     }
   }
 
-  private printStats(population: Population<PointChromosome>) {
+  private getPopulationStats (population: Population<PointChromosome>){
     const mostFit = population.getMostFit(this.fitnessFunc);
-    console.log(`Population ${population.generationNo}
-     Most fit  x: ${mostFit.x} y: ${mostFit.y} score: ${this.fitnessFunc(mostFit)}
-     avg fit:  ${population.getAvgFitness(this.fitnessFunc)}`);
+    const populationStats = new PopulationStats<PointChromosome>(
+      population.generationNo,
+      this.fitnessFunc(mostFit),
+      population.getAvgFitness(this.fitnessFunc),
+      mostFit);
+    return populationStats;
   }
 
   private createCrossOver(newPopulation: Population<PointChromosome>) {

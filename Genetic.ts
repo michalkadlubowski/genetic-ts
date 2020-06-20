@@ -22,16 +22,19 @@ function randomIntFromInterval(min: number, max:number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-console.log(peakFunction(new PointChromosome(20, -160)));
-console.log(peakFunction(new PointChromosome(-242, -58)));
-
-let chromosomes = [];
+const chromosomes = [];
 for (let index = 0; index < 10; index++) {
   const x = randomIntFromInterval(-300, 300);
   const y = randomIntFromInterval(-300, 300);
   chromosomes[index] = new PointChromosome(x, y);
 }
-let population = new Population(chromosomes);
-
-let geneticProc = new GeneticProcedure(population, 0.2, 0.3, 0.8, peakFunction);
+const population = new Population(chromosomes);
+const geneticProc = new GeneticProcedure(population, 0.2, 0.3, 0.8, peakFunction);
+geneticProc.population$.subscribe(stats => {
+  console.log(`Population ${stats.populationNo}
+ Most fit  x: ${stats.bestSpecimen.x} y: ${stats.bestSpecimen.y} score: ${stats.maxScore})}
+ avg fit:  ${stats.avgScore}`);
+});
 geneticProc.evolve(1000);
+console.log(peakFunction(new PointChromosome(20, -160)));
+console.log(peakFunction(new PointChromosome(-242, -58)));
