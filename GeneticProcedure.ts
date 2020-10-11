@@ -51,6 +51,7 @@ export class GeneticProcedure {
       }
       population = newPopulation;
     }
+    this.population$.complete();
   }
 
   private getPopulationStats (population: Population<PointChromosome>){
